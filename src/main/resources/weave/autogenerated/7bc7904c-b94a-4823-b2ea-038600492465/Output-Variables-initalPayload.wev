@@ -1,0 +1,12 @@
+%dw 2.0
+
+type auto_7bc7904c_b94a_4823_b2ea_038600492465_Output_Variables_initalPayload = {
+  atmPin: String, 
+  depositAmount?: Number, 
+  accountNum: String, 
+  contact: String, 
+  mailId: String, 
+  ifscCode: String, 
+  _?: Any
+}
+

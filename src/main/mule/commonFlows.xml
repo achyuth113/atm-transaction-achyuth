@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="bac2a1f9-a8ad-482c-8904-2ca1cd4b8ad6" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="harrypotter@113" database="bank" />
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="c3c0e742-08fb-4c78-9adf-7c9fe0113d4c" >
+		<file:connection workingDir="C:\Users\17165\Documents\atm-transaction-Achyuth" />
+	</file:config>
+	<flow name="gbit-atm-transaction-Achyuth-checkAccountExists" doc:id="5b3d3fbf-8043-4ba2-9f15-0d072888380b" >
+		<logger level="INFO" doc:name="Logger" doc:id="c0c523e0-928b-496c-9969-a0ed5f7a8042" message="Checking Account Exists or Not"/>
+		<db:select doc:name="Select" doc:id="22f3f4de-6f56-45b4-b7c0-e6c9e4a31620" config-ref="Database_Config" target="isAccountCreated">
+			<db:sql ><![CDATA[SELECT COUNT(*) AS accountExists
+FROM Bank_Transactions
+WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	custAccNum: vars.initialPayload.custAccNum,
+	bankName: vars.initialPayload.bankName
+}]]]></db:input-parameters>
+		</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="5e560905-aac7-452d-8634-2ae71fcf390b" message='#["account status :" ++ vars.isAccountCreated.accountExists[0]]'/>
+		<set-payload value="#[vars.isAccountCreated.accountExists[0]]" doc:name="Set Payload" doc:id="bce1266a-6cd7-467f-a3ef-03e123d6a32c" />
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-insertNewAccountRecord" doc:id="64989ee2-9256-484f-82b0-65c228974cea" >
+		<db:insert doc:name="Insert" doc:id="ae20258d-542d-4cfe-a7c7-fce3d3153425" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO bank.Bank_Transactions
+  (custName, custAccNum, atmPin, bankName, accountType, ifscCode, branchName, totalBalance, transactionTimeStamp, accountStatus, wrongPin, mailId, phoneNumber)
+VALUES
+  (:custName, :custAccNum, :atmPin, :bankName, :accountType, :ifscCode, :branchName, :totalBalance, :transactionTimeStamp, :accountStatus, :wrongPin, :mailId, :phoneNumber);
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	custName: vars.initialPayload.custName,
+	custAccNum: vars.initialPayload.custAccNum,
+	atmPin: vars.initialPayload.atmPin,
+	bankName: vars.initialPayload.bankName,
+	accountType: vars.initialPayload.accountType,
+	ifscCode: vars.initialPayload.ifscCode,
+	branchName: vars.initialPayload.branchName,
+	totalBalance: vars.initialPayload.totalBalance,
+	transactionTimeStamp: vars.initialPayload.transactionTimeStamp,
+	accountStatus: vars.initialPayload.accountStatus,
+	wrongPin: vars.initialPayload.wrongPin,
+	mailId: vars.initialPayload.mailId,
+	phoneNumber: vars.initialPayload.phoneNumber
+}]]]></db:input-parameters>
+		</db:insert>
+		<flow-ref doc:name="file writing" doc:id="867c2a91-89b2-4fb7-be50-5a85c645efc0" name="gbit-atm-transaction-Achyuth-createAccountJsonFile" target="fileRead"/>
+		<logger level="INFO" doc:name="Logger" doc:id="89f10c9b-00c4-484b-b163-47f86c59cfb0" message="Successfully created an account"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4a1cd694-6603-4324-b9be-370234762d69" >
+				<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Unable insert record in database"}]' doc:name="Set Payload for DB issues" doc:id="0867d08a-029c-4c1a-92ac-5ba367c2e4bb" />
+				<set-variable value="400" doc:name="Set Variable" doc:id="09634393-a705-454d-8809-516aa78845ed" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-raiseAccountExists" doc:id="7bc7904c-b94a-4823-b2ea-038600492465" >
+		<logger level="INFO" doc:name="Logger" doc:id="3ac9351f-70a8-41ce-9014-92e4fa38ff0a" message="Account already exist"/>
+		<set-payload doc:name="Set Payload" doc:id="3cf31ca2-98db-4eba-8e2f-69b4c645a221" value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Account " ++ vars.initalPayload.custAccNum ++ " already exists"}]'/>
+		<raise-error doc:name="Raise error" doc:id="f56da9e6-a18d-4e2d-be66-97c62c8a0f91" type="ACCOUNT:ALREADYEXISTS" description="Account Already Exists"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="576c351b-7c6f-46e0-bb9c-b75022c444d1" type="ANY">
+				<set-variable value="400" doc:name="Set Variable" doc:id="e1ffd80f-0566-4d1a-9116-f9dd73928aaf" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-createAccountJsonFile" doc:id="efc36835-65a3-4fc5-87f5-265c05e7abc5" >
+		<set-variable value='#[vars.initialPayload.custAccNum ++ "_" ++ vars.initialPayload.custName ++ ".json"]' doc:name="Set Variable" doc:id="bb871542-6982-4505-87ab-3769401f71b2" variableName="filePath"/>
+		<file:write doc:name="Write" doc:id="ca724009-8e91-4537-af40-0ee2f6e8540e" config-ref="File_Config" path="#[vars.filePath]">
+			<file:content ><![CDATA[#[vars.initialPayload]]]></file:content>
+		</file:write>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="9dcf25cf-23aa-4cbc-becc-d72d5a5bd0f3" />
+	</flow>
+</mule>
