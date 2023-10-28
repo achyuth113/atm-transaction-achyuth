@@ -188,7 +188,7 @@ output application/json
 		</error-handler>
     </flow>
     <flow name="post:\createAccount:application\json:gbit-atm-transaction-Achyuth-config">
-        <set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: attributes.queryParams.customerName default &quot;&quot;,&#10;	custAccNum: payload.accountNum default &quot;&quot;,&#10;	atmPin: payload.atmPin default &quot;&quot;,&#10;	bankName: attributes.queryParams.bank default &quot;&quot;,&#10;	accountType: attributes.queryParams.&quot;type&quot; default &quot;&quot;,&#10;	ifscCode: payload.ifscCode default &quot;&quot;,&#10;	branchName: attributes.queryParams.branchName default &quot;&quot;,&#10;	totalBalance: payload.depositAmount default &quot;0.00&quot;,&#10;	transactionTimeStamp: now() default &quot;&quot;,&#10;	accountStatus: 'Active' default &quot;&quot;,&#10;	wrongPin: 0 default -1,&#10;	mailId: payload.mailId default &quot;&quot;,&#10;	phoneNumber: payload.contact default &quot;&quot;&#10;}]" doc:name="Copy Payload" doc:id="bdbe4c5b-e701-474a-84c2-839e0111c89a" variableName="initalPayload"/>
+        <set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: attributes.queryParams.customerName default &quot;&quot;,&#10;	custAccNum: payload.accountNum default &quot;&quot;,&#10;	atmPin: payload.atmPin default &quot;&quot;,&#10;	bankName: attributes.queryParams.bank default &quot;&quot;,&#10;	accountType: attributes.queryParams.&quot;type&quot; default &quot;&quot;,&#10;	ifscCode: payload.ifscCode default &quot;&quot;,&#10;	branchName: attributes.queryParams.branchName default &quot;&quot;,&#10;	totalBalance: payload.depositAmount default &quot;0.00&quot;,&#10;	transactionTimeStamp: now() default &quot;&quot;,&#10;	accountStatus: 'Active' default &quot;&quot;,&#10;	wrongPin: 0 default -1,&#10;	mailId: payload.mailId default &quot;&quot;,&#10;	phoneNumber: payload.contact default &quot;&quot;&#10;}]" doc:name="Copy Payload" doc:id="bdbe4c5b-e701-474a-84c2-839e0111c89a" variableName="initialPayload"/>
 		<ee:transform doc:name="Transform Message" doc:id="6a4d3257-62a1-41f5-a277-04623962a160" >
 			<ee:message >
 			</ee:message>
@@ -196,13 +196,13 @@ output application/json
 				<ee:set-variable variableName="initialPayload" ><![CDATA[%dw 2.0
 output application/json
 ---
-vars.initalPayload]]></ee:set-variable>
+vars.initialPayload]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
 		<flow-ref doc:name="Flow Reference" doc:id="48a27a04-f6a3-4ed2-b0ff-437207244228" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
 		<choice doc:name="Choice" doc:id="8dd4d786-552f-48d6-9b81-7154b2675017" >
 			<when expression="#[vars.accountExists == 0]">
-				<logger level="INFO" doc:name="Logger" doc:id="f4e215a0-2e26-471f-a58e-6c32b0860bcf" message="#[vars.initalPayload]"/>
+				<logger level="INFO" doc:name="Logger" doc:id="f4e215a0-2e26-471f-a58e-6c32b0860bcf" message="#[vars.initialPayload]"/>
 				<flow-ref doc:name="Flow Reference" doc:id="3a45017f-67f3-4a52-a5af-7af2f0d9ba29" name="gbit-atm-transaction-Achyuth-insertNewAccountRecord"/>
 			</when>
 			<otherwise >
@@ -215,7 +215,7 @@ vars.initalPayload]]></ee:set-variable>
 output application/json
 ---
 {
-  status: "Account Created Successfully with Account Number " ++ vars.initalPayload.custAccNum 
+  status: "Account Created Successfully with Account Number " ++ vars.initialPayload.custAccNum 
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
@@ -226,18 +226,18 @@ output application/json
 		</error-handler>
     </flow>
     <flow name="post:\withdraw:application\json:gbit-atm-transaction-Achyuth-config">
-        <set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: "NONE",&#10;	custAccNum: payload.accountNum default "NONE",&#10;	atmPin: payload.atmPin default "NON",&#10;	bankName: attributes.queryParams.bank default "",&#10;	accountType: attributes.queryParams."type" default "",&#10;	ifscCode: "NONE",&#10;	branchName: "NONE",&#10;	totalBalance: "NONE",&#10;	transactionTimeStamp: now(),&#10;	accountStatus: "",&#10;	wrongPin: -1,&#10;	mailId: "NONE",&#10;	phoneNumber: "NONE"&#10;}]' doc:name="Set Variable" doc:id="0628ede6-7290-479a-8b52-5d00ce025366" variableName="initialPayload"/>
+        <set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: "NONE",&#10;	custAccNum: payload.accountNum default "NONE",&#10;	atmPin: payload.atmPin default "NON",&#10;	bankName: attributes.queryParams.bank default "",&#10;	accountType: attributes.queryParams."type" default "",&#10;	ifscCode: "NONE",&#10;	branchName: "NONE",&#10;	totalBalance: "NONE",&#10;	transactionTimeStamp: now(),&#10;	accountStatus: "",&#10;	wrongPin: -1,&#10;	mailId: "NONE",&#10;	phoneNumber: "NONE",&#10;	withdrawnAmount: payload.amountToBeWithdraw default "0.0"&#10;}]' doc:name="Set Variable" doc:id="0628ede6-7290-479a-8b52-5d00ce025366" variableName="initialPayload"/>
 		<flow-ref doc:name="Flow Reference" doc:id="adaaab27-022b-48e1-a7a5-6bd110763826" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
 		<choice doc:name="Choice" doc:id="26596e92-268e-4767-af0d-3931d38a8b16" >
 			<when expression="#[vars.accountExists == 1]">
-				<flow-ref doc:name="Check Account is Active" doc:id="679610bb-cf95-42f0-8454-45be55c047ef" name="gbit-atm-transaction-Achyuth-isAccountActive"/>
+				<flow-ref doc:name="Check Account is Active" doc:id="679610bb-cf95-42f0-8454-45be55c047ef" name="gbit-atm-transaction-Achyuth-isAccountActive" target="accountActive"/>
 				<choice doc:name="Choice" doc:id="2e27b357-e33f-4fe0-ae40-8e85f414bfc0" >
 					<when expression="#[vars.accountActive != 'Active']">
 						<flow-ref doc:name="Flow Reference" doc:id="8abbcdd2-a18d-4d9f-877c-40958842cfda" name="gbit-atm-transaction-Achyuth-raiseAccountInactiveError"/>
 						<logger level="INFO" doc:name="Logger" doc:id="98638b56-57e9-4e85-b972-ac4b1976ba31" message="Account is Inactive. Raising relative error"/>
 					</when>
 					<otherwise >
-						<flow-ref doc:name="Flow Reference" doc:id="829db30f-9068-4073-81a6-1d2ae2caee53" name="gbit-atm-transaction-Achyuth-isAccountPinValid"/>
+						<flow-ref doc:name="Flow Reference" doc:id="829db30f-9068-4073-81a6-1d2ae2caee53" name="gbit-atm-transaction-Achyuth-isAccountPinValid" target="pinValid"/>
 						<flow-ref doc:name="Flow Reference" doc:id="bbae83dc-4eb7-464d-a716-d75ed4af0394" name="gbit-atm-transaction-Achyuth-getAccountDetails" target="actualDetails"/>
 						<choice doc:name="Choice" doc:id="6fc4386f-9dfc-414d-83b8-932948a646bd" >
 							<when expression="#[vars.pinValid == 1]">
@@ -260,7 +260,7 @@ output application/json
 output application/json
 ---
 {
-  status: "Amount <AMOUNT> is debited. Your total balance is <BALANCE>"
+  status: "Amount " ++ vars.initialPayload.withdrawnAmount ++ " is debited. Your total balance is " ++ (vars.actualDetails.totalBalance - vars.initialPayload.withdrawnAmount)
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>

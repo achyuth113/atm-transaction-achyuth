@@ -53,7 +53,7 @@ WHERE custAccNum = :custAccNum and bankName = :bankName and atmPin = :atmPin;]]>
 }]]]></db:input-parameters>
 		</db:select>
 		<logger level="INFO" doc:name="Logger" doc:id="155f6c9a-ae24-4c2f-b099-ecec49f918d7" message='#["account pin valid or not :" ++ vars.isPinValid[0].pinValid]'/>
-		<set-payload value="#[vars.isPinValid[0].pinValid default '0']" doc:name="Set Payload" doc:id="d5fb52b0-e087-4fdf-9346-b32dcb42b84a" />
+		<set-payload value="#[vars.isPinValid[0].pinValid default 0]" doc:name="Set Payload" doc:id="d5fb52b0-e087-4fdf-9346-b32dcb42b84a" />
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-getAccountDetails" doc:id="fc0d7b63-c7c8-43c8-9e7c-23135093c94d" >
 		<logger level="INFO" doc:name="Logger" doc:id="02671e40-4897-4ec4-8bf5-3a71cd14f58e" message="Getting Account Full Details"/>
@@ -152,11 +152,33 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 		</choice>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-updateAccountBalance" doc:id="2c2bbfe8-e87b-481f-a714-dd2c31fa8559" >
-		<logger level="INFO" doc:name="Logger" doc:id="6e613a4c-912d-4f71-8c7d-26045d329a18" />
+		<logger level="INFO" doc:name="Logger" doc:id="6e613a4c-912d-4f71-8c7d-26045d329a18" message="Checking amountToBeWithdrawn is higher than balance"/>
+		<choice doc:name="Choice" doc:id="3bf6e5c6-4f8c-49ee-b319-fe85459cbdbb" >
+			<when expression="#[(vars.initialPayload.withdrawnAmount as Number &lt;= vars.actualDetails.totalBalance)]">
+				<logger level="INFO" doc:name="Logger" doc:id="bd71e4e1-786a-4afe-92d0-9282e6fb9700" message="amountToBeWithdrawn isn't higher than balance. Commiting the transaction."/>
+				<db:update doc:name="Update" doc:id="81da0f64-d02d-45d8-b7ed-c4a52ed90e77" config-ref="Database_Config">
+					<db:sql ><![CDATA[UPDATE bank.Bank_Transactions 
+SET totalBalance = :totalBalance, transactionTimeStamp = :current_time 
+WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	custAccNum: vars.initialPayload.custAccNum,
+	bankName: vars.initialPayload.bankName,
+	atmPin: vars.initialPayload.atmPin,
+	current_time: now(),
+	totalBalance: (vars.actualDetails.totalBalance - vars.initialPayload.withdrawnAmount) 
+}]]]></db:input-parameters>
+				</db:update>
+				<logger level="INFO" doc:name="Logger" doc:id="b10dc2c9-447f-4f3b-b5c7-454f497d8002" message='#["Successfully committed a transaction. Amount " ++ (vars.initialPayload.withdrawnAmount default 0) ++ " is debited. Your total balance is " ++ (vars.actualDetails.totalBalance - vars.initialPayload.withdrawnAmount)]'/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="e16ff51f-95bc-4e7c-b2b9-6b41652e82e4" message="amountToBeWithdrawn is higher than balance. Raising Insufficient funds error"/>
+				<flow-ref doc:name="Flow Reference" doc:id="e8ff5af1-7232-4a59-81e7-91ee5e47c02e" name="gbit-atm-transaction-Achyuth-raiseAccountInsufficientFundsError"/>
+			</otherwise>
+		</choice>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAtmPinError" doc:id="63b1d43f-de16-45a1-8d93-93a8dfaeff22" >
 		<logger level="INFO" doc:name="Logger" doc:id="b5147b1c-5ef9-4b31-8e94-93ce00dc75be" />
-		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&#10;	"status": "Login attempt failed. Attempts left: " ++ (3 - vars.actualDetails.wrongPin)&#10;}]' doc:name="Set Payload" doc:id="373c6257-5ad4-41b5-aafd-15f76e0a6ad9" />
+		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&#10;	"status": "Login attempt failed. Attempts left: " ++ (3 - vars.actualDetails.wrongPin )&#10;}]' doc:name="Set Payload" doc:id="373c6257-5ad4-41b5-aafd-15f76e0a6ad9" />
 		<raise-error doc:name="Raise error" doc:id="73615275-8e12-4b87-baf6-11177111452c" type="ACCOUNT:PININVALID"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="0da20881-3dd3-4501-93b3-765a6d5618cc" type="ACCOUNT:PININVALID">
@@ -164,9 +186,19 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 			</on-error-propagate>
 		</error-handler>
 	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-raiseAccountInsufficientFundsError" doc:id="d36bc057-ab5e-4d36-bf15-3beba7c45ca8" >
+		<logger level="INFO" doc:name="Logger" doc:id="375bfc70-00fc-4bd6-8632-b5a8bd953caf" />
+		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&#10;	"status": "“Insufficient Funds"&#10;}]' doc:name="Set Payload" doc:id="e98e64e4-e894-46ce-a7c4-20b31f4c052f" />
+		<raise-error doc:name="Raise error" doc:id="d3ebf3de-e0d9-4521-8982-30b900151a90" type="ACCOUNT:INSUFFICIENTFUNDS"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2dc9cdbe-6282-4c1a-8062-338df1b6e9b1" type="ACCOUNT:INSUFFICIENTFUNDS">
+				<set-variable value="400" doc:name="Set Variable" doc:id="4817e0ae-8556-41a0-9b4a-5aa67a3bcb28" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAccountBlockError" doc:id="815715da-e047-4334-a314-e9a519b13d94" >
 		<logger level="INFO" doc:name="Logger" doc:id="4d930031-ad71-478a-b61d-1586c16305b2" />
-		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&#10;	"status": "Maximum login attempts reached. You account " ++ vars.actualDetails.custAccNum ++ " is temporarily blocked. Please visit nearest branch."	&#10;}]' doc:name="Set Payload" doc:id="34040350-0aaf-41b6-854b-9909c258411c" />
+		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&#10;	"status": "Maximum login attempts reached. You account " ++ (vars.actualDetails.custAccNum default "None") ++ " is temporarily blocked. Please visit nearest branch."	&#10;}]' doc:name="Set Payload" doc:id="34040350-0aaf-41b6-854b-9909c258411c" />
 		<raise-error doc:name="Raise error" doc:id="0054049e-43ad-4ee2-b57b-393e9196c784" type="ACCOUNT:BLOCKING"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f8d231e7-79a5-417f-a5e8-17b0eabdc016" type="ACCOUNT:BLOCKING">
@@ -176,7 +208,7 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAccountExistsError" doc:id="7bc7904c-b94a-4823-b2ea-038600492465" >
 		<logger level="INFO" doc:name="Logger" doc:id="3ac9351f-70a8-41ce-9014-92e4fa38ff0a" message="Account already exist"/>
-		<set-payload doc:name="Set Payload" doc:id="3cf31ca2-98db-4eba-8e2f-69b4c645a221" value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Account " ++ vars.initalPayload.custAccNum ++ " already exists"}]'/>
+		<set-payload doc:name="Set Payload" doc:id="3cf31ca2-98db-4eba-8e2f-69b4c645a221" value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Account " ++ (vars.initialPayload.custAccNum default "NONE") ++ " already exists"}]'/>
 		<raise-error doc:name="Raise error" doc:id="f56da9e6-a18d-4e2d-be66-97c62c8a0f91" type="ACCOUNT:ALREADYEXISTS" description="Account Already Exists"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="576c351b-7c6f-46e0-bb9c-b75022c444d1" type="ANY">
@@ -186,7 +218,7 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAccountNotExistsError" doc:id="e2deb85f-5241-450c-970b-cc76a0cc1550" >
 		<logger level="INFO" doc:name="Logger" doc:id="7833b768-ca87-4e2c-8e0e-bd50c0ac7370" message="Account not exist. Please enter valid details"/>
-		<set-payload value="#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&quot;status&quot;: &quot;Account &quot; ++ (vars.initalPayload.custAccNum default &quot;NONE&quot;) ++ &quot; doesn't exists. Please enter a valid details.&quot;}]" doc:name="Set Payload" doc:id="85a73f88-eddc-4d6d-8283-606e8c9b9146" />
+		<set-payload value="#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&quot;status&quot;: &quot;Account &quot; ++ (vars.initialPayload.custAccNum default &quot;NONE&quot;) ++ &quot; doesn't exists. Please enter a valid details.&quot;}]" doc:name="Set Payload" doc:id="85a73f88-eddc-4d6d-8283-606e8c9b9146" />
 		<raise-error doc:name="Raise error" doc:id="19658618-ee92-4159-9b07-7f565c625c34" type="ACCOUNT:NOTEXISTS" description="Account Not Exists. Please enter valid details"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2949f018-72b3-43e5-9a51-537163713ff9" type="ACCOUNT:ALREADYEXISTS">
@@ -196,7 +228,7 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAccountInactiveError" doc:id="d00c1349-a162-4f6e-8027-f2e8c2fa1c91" >
 		<logger level="INFO" doc:name="Logger" doc:id="220a50ce-30ed-4016-a1c5-e722655997dd" message="Account is not active"/>
-		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Account " ++ (vars.initalPayload.custAccNum default "NONE") ++ " is blocked. Please visit nearest branch"}]' doc:name="Set Payload" doc:id="872097fc-89a6-4324-878b-e84f2b113266" />
+		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Account " ++ (vars.initialPayload.custAccNum default "NONE") ++ " is blocked. Please visit nearest branch"}]' doc:name="Set Payload" doc:id="872097fc-89a6-4324-878b-e84f2b113266" />
 		<raise-error doc:name="Raise error" doc:id="6593ee7e-2687-4662-99b1-3958487ec95d" type="ACCOUNT:INACTIVE"/>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f204d03c-da79-4558-9776-9c0c0cc89a03" type="ACCOUNT:INACTIVE">

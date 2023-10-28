@@ -1,0 +1,18 @@
+%dw 2.0
+
+type auto_d36bc057_ab5e_4d36_bf15_3beba7c45ca8_Output_Variables_initialPayload = {|
+  custName: String, 
+  custAccNum: String, 
+  atmPin: String, 
+  bankName: String, 
+  accountType: String, 
+  ifscCode: String, 
+  branchName: String, 
+  totalBalance: String, 
+  transactionTimeStamp: DateTime, 
+  accountStatus: String, 
+  wrongPin: Number, 
+  mailId: String, 
+  phoneNumber: String
+|}
+
