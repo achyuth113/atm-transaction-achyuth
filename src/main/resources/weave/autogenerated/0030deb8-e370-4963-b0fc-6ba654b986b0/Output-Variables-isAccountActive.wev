@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_0030deb8_e370_4963_b0fc_6ba654b986b0_Output_Variables_isAccountActive = Array<{| accountStatus: String |}>
+

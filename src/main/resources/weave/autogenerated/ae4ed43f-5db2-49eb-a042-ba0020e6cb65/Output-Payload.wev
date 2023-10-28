@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_ae4ed43f_5db2_49eb_a042_ba0020e6cb65_Output_Payload = {| status: String |}
+

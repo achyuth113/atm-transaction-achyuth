@@ -131,13 +131,44 @@ output application/json
         </error-handler>
     </flow>
     <flow name="put:\unblock:application\json:gbit-atm-transaction-Achyuth-config">
-        <ee:transform doc:name="Transform Message">
+        <set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: "NONE",&#10;	custAccNum: payload.accountNum default "NONE",&#10;	atmPin: "NON",&#10;	bankName: payload.bank default "",&#10;	accountType: "NONE",&#10;	ifscCode: "NONE",&#10;	branchName: "NONE",&#10;	totalBalance: "NONE",&#10;	transactionTimeStamp: now(),&#10;	accountStatus: "",&#10;	wrongPin: 4,&#10;	mailId: "NONE",&#10;	phoneNumber: "NONE"&#10;}]' doc:name="Set Variable" doc:id="19100ccd-b428-4a1a-923e-221c84534cd4" variableName="initialPayload"/>
+		<choice doc:name="Choice" doc:id="db91a69e-7931-4c7d-873a-7349e985896a" >
+			<when expression="#[payload.user == 'admin' and payload.password == 'admin']">
+				<logger level="INFO" doc:name="Logger" doc:id="b1ecfd46-a517-4d5b-955d-3b8545f57ced" message="Credentials Matched."/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="c99709d6-cbe3-48de-9239-4a73766101e1" message="Raising authorization issue"/>
+				<flow-ref doc:name="Flow Reference" doc:id="9531c561-c95e-43e7-be7d-56b2a445e47a" name="gbit-atm-transaction-Achyuth-raiseAuthenticationError"/>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="Flow Reference" doc:id="2fb56a24-6c50-457b-a80f-4af17dace914" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
+		<choice doc:name="Choice" doc:id="1e74b05c-27b5-4d3b-85ee-3150a442b024" >
+			<when expression="#[vars.accountExists == 1]">
+				<logger level="INFO" doc:name="Logger" doc:id="b4b992a6-df17-4d80-aafc-ee278fca5f6c" message="Account already exists"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="6968921c-d709-495c-84fe-4e5e7c5c6df4" message="Account Not Found"/>
+				<flow-ref doc:name="Flow Reference" doc:id="0f184ffe-afd9-487d-b151-eec00110bbe1" name="gbit-atm-transaction-Achyuth-raiseAccountNotExistsError"/>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="Flow Reference" doc:id="ce41136a-399d-47f0-8262-3bf1a77a8651" name="gbit-atm-transaction-Achyuth-isAccountActive" target="accountActive"/>
+		<choice doc:name="Choice" doc:id="f17cec0d-e58d-4122-9f11-57303a1ef359" >
+			<when expression="#[vars.accountActive != 'Active']">
+				<logger level="INFO" doc:name="Logger" doc:id="ede07db2-a39d-48d0-8775-e1bef99dc4e2" message="Unblocking the account"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="3b98e0a5-42d1-430f-8fcf-b90a01e508bd" message="Account is active. Hence throwing an error"/>
+				<flow-ref doc:name="Flow Reference" doc:id="37f396fc-f781-4eb0-a134-ee1692b245ff" name="gbit-atm-transaction-Achyuth-raiseAccountActiveError"/>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="Flow Reference" doc:id="c479ec78-e1d8-4524-a7d5-77b64cdae870" name="gbit-atm-transaction-Achyuth-updateAccountStaus" />
+		<ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  status: "Account <ACCOUNT> is unblocked"
+  status: "Account " ++ vars.initialPayload.custAccNum ++ " is unblocked"
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>

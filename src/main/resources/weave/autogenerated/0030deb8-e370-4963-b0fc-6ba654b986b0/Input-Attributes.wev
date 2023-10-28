@@ -1,0 +1,26 @@
+%dw 2.0
+
+type auto_0030deb8_e370_4963_b0fc_6ba654b986b0_Input_Attributes = {|
+  remoteAddress: String, 
+  localAddress: String, 
+  clientCertificate?: {|
+    publicKey?: {|  |}, 
+    "type"?: String, 
+    encoded?: Binary
+  |}, 
+  uriParams: {|  |}, 
+  queryParams: {|
+    bank?: "AXIS", 
+    "type"?: "current" | "savings"
+  |}, 
+  requestPath: String, 
+  relativePath: String, 
+  scheme: String, 
+  version: String, 
+  method: String, 
+  requestUri: String, 
+  queryString: String, 
+  headers: {|  |}, 
+  listenerPath: String
+|}
+

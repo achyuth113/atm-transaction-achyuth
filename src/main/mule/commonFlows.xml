@@ -159,7 +159,8 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 				<db:update doc:name="Update" doc:id="81da0f64-d02d-45d8-b7ed-c4a52ed90e77" config-ref="Database_Config">
 					<db:sql ><![CDATA[UPDATE bank.Bank_Transactions 
 SET totalBalance = :totalBalance, transactionTimeStamp = :current_time 
-WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
+WHERE custAccNum = :custAccNum and bankName = :bankName;
+]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
 	custAccNum: vars.initialPayload.custAccNum,
 	bankName: vars.initialPayload.bankName,
@@ -175,6 +176,23 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 				<flow-ref doc:name="Flow Reference" doc:id="e8ff5af1-7232-4a59-81e7-91ee5e47c02e" name="gbit-atm-transaction-Achyuth-raiseAccountInsufficientFundsError"/>
 			</otherwise>
 		</choice>
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-updateAccountStaus" doc:id="0030deb8-e370-4963-b0fc-6ba654b986b0" >
+		<logger level="INFO" doc:name="Logger" doc:id="c36b3772-f3de-402a-8844-a9976765989d" message="Unblocking the account"/>
+		<db:update doc:name="Update" doc:id="7c70768e-85c9-448e-a3f9-40cbc270cf93" config-ref="Database_Config">
+			<db:sql ><![CDATA[UPDATE bank.Bank_Transactions 
+SET wrongPin = :wrongPin, accountStatus = :accountStatus 
+WHERE custAccNum = :custAccNum and bankName = :bankName;
+
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	custAccNum: vars.initialPayload.custAccNum,
+	bankName: vars.initialPayload.bankName,
+	accountStatus: 'Active',
+	wrongPin: 0
+}]]]></db:input-parameters>
+		</db:update>
+		<logger level="INFO" doc:name="Logger" doc:id="68ac3ba4-1d53-4729-8052-8050e95e847c" message="Successfully Unblocked an account"/>
 	</flow>
 	<flow name="gbit-atm-transaction-Achyuth-raiseAtmPinError" doc:id="63b1d43f-de16-45a1-8d93-93a8dfaeff22" >
 		<logger level="INFO" doc:name="Logger" doc:id="b5147b1c-5ef9-4b31-8e94-93ce00dc75be" />
@@ -213,6 +231,26 @@ WHERE custAccNum = :custAccNum and bankName = :bankName;]]></db:sql>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="576c351b-7c6f-46e0-bb9c-b75022c444d1" type="ANY">
 				<set-variable value="400" doc:name="Set Variable" doc:id="e1ffd80f-0566-4d1a-9116-f9dd73928aaf" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-raiseAccountActiveError" doc:id="b748fdb2-f0c3-4d90-9b3e-8a2d59b5026b" >
+		<logger level="INFO" doc:name="Logger" doc:id="23a05b5b-3fbf-4baf-85e8-4672ba12aac8" message="Since account is unlocked. We are throwing an accountActiveError and informating no need for update."/>
+		<set-payload value="#[%dw 2.0 &#10;output application/json &#10;--- &#10;{&quot;status&quot;: &quot;Account isn't blocked&quot;}]" doc:name="Set Payload" doc:id="9d14738e-3271-460d-a08a-91318be2eff2" />
+		<raise-error doc:name="Raise error" doc:id="4d3a110b-9a69-48ab-8ad0-d5d77fcecd9b" type="ACCOUNT:ACTIVE"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8847066b-146a-458e-8deb-2c30d0432196" type="ACCOUNT:ACTIVE">
+				<set-variable value="400" doc:name="Set Variable" doc:id="a28e13b1-4409-4e28-afc7-f41a39730d41" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="gbit-atm-transaction-Achyuth-raiseAuthenticationError" doc:id="ae4ed43f-5db2-49eb-a042-ba0020e6cb65" >
+		<logger level="INFO" doc:name="Logger" doc:id="b81ca3c6-5470-4dfb-ae7c-50d8157a7631" message="Raising Authentication issue"/>
+		<set-payload value='#[%dw 2.0 &#10;output application/json &#10;--- &#10;{"status": "Authentication issue"}]' doc:name="Set Payload" doc:id="ccfe42c3-cf68-42c1-af0d-00e363135967" />
+		<raise-error doc:name="Raise error" doc:id="23dcc750-806b-4430-8902-183aec8b1013" type="USER:AUTHENTICATION"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="5984982e-125f-4714-927c-1f3ad253a4bc" type="USER:AUTHENTICATION">
+				<set-variable value="400" doc:name="Set Variable" doc:id="fcc04b8a-bd8b-40fe-b8fb-b17269084f0d" variableName="httpStatus"/>
 			</on-error-propagate>
 		</error-handler>
 	</flow>

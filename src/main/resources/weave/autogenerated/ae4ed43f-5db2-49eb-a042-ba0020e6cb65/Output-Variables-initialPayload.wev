@@ -1,0 +1,18 @@
+%dw 2.0
+
+type auto_ae4ed43f_5db2_49eb_a042_ba0020e6cb65_Output_Variables_initialPayload = {|
+  custName: String, 
+  custAccNum: String, 
+  atmPin: String, 
+  bankName: "ICICI" | "HDFC" | "AXIS" | "", 
+  accountType: String, 
+  ifscCode: String, 
+  branchName: String, 
+  totalBalance: String, 
+  transactionTimeStamp: DateTime, 
+  accountStatus: String, 
+  wrongPin: Number, 
+  mailId: String, 
+  phoneNumber: String
+|}
+
