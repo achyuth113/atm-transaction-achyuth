@@ -1,0 +1,26 @@
+%dw 2.0
+
+type auto_fc0d7b63_c7c8_43c8_9e7c_23135093c94d_Output_Attributes = {|
+  clientCertificate?: {|
+    publicKey?: {|  |}, 
+    "type"?: String, 
+    encoded?: Binary
+  |}, 
+  headers: {|  |}, 
+  listenerPath: String, 
+  method: String, 
+  queryParams: {|
+    bank: "ICICI" | "HDFC" | "AXIS", 
+    "type": "current" | "savings"
+  |}, 
+  queryString: String, 
+  relativePath: String, 
+  remoteAddress: String, 
+  requestPath: String, 
+  requestUri: String, 
+  scheme: String, 
+  uriParams: {|  |}, 
+  version: String, 
+  localAddress: String
+|}
+

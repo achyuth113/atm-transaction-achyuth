@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_815715da_e047_4334_a314_e9a519b13d94_Input_Variables_pinValid = Any
+

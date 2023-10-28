@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_fc0d7b63_c7c8_43c8_9e7c_23135093c94d_Output_Variables_pinValid = Any
+

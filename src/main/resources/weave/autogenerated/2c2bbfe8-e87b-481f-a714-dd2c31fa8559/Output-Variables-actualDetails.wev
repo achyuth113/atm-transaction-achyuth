@@ -1,0 +1,8 @@
+%dw 2.0
+
+type auto_2c2bbfe8_e87b_481f_a714_dd2c31fa8559_Output_Variables_actualDetails = {
+  atmPin: String, 
+  accountNum: String, 
+  _?: Any
+}
+

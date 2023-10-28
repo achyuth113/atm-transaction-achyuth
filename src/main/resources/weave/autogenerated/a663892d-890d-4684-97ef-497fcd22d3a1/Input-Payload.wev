@@ -1,0 +1,8 @@
+%dw 2.0
+
+type auto_a663892d_890d_4684_97ef_497fcd22d3a1_Input_Payload = {
+  atmPin: String, 
+  accountNum: String, 
+  _?: Any
+}
+

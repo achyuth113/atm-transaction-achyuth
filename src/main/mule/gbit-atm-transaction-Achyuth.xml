@@ -143,16 +143,49 @@ output application/json
         </ee:transform>
     </flow>
     <flow name="post:\checkBalance:application\json:gbit-atm-transaction-Achyuth-config">
-        <ee:transform doc:name="Transform Message">
+        <set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: "NONE",&#10;	custAccNum: payload.accountNum default "NONE",&#10;	atmPin: payload.atmPin default "NON",&#10;	bankName: attributes.queryParams.bank default "",&#10;	accountType: attributes.queryParams."type" default "",&#10;	ifscCode: "NONE",&#10;	branchName: "NONE",&#10;	totalBalance: "NONE",&#10;	transactionTimeStamp: now(),&#10;	accountStatus: "",&#10;	wrongPin: -1,&#10;	mailId: "NONE",&#10;	phoneNumber: "NONE"&#10;}]' doc:name="Set Variable" doc:id="5e493b4b-cec8-434f-82ee-45d4730298a6" variableName="initialPayload"/>
+		<flow-ref doc:name="Flow Reference" doc:id="abd60b2e-30d7-49db-b09c-58febc132fcd" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
+		<choice doc:name="Choice" doc:id="d3481f72-b801-47f0-ae84-9bb6862a3164" >
+			<when expression="#[vars.accountExists == 1]">
+				<flow-ref doc:name="Check Account is Active" doc:id="953a80ac-3dff-4c09-8498-7db2990aa86e" name="gbit-atm-transaction-Achyuth-isAccountActive" target="accountActive"/>
+				<choice doc:name="Choice" doc:id="4b5063e2-9994-4411-b80b-cfe7fdde3446" >
+					<when expression="#[vars.accountActive != 'Active']">
+						<flow-ref doc:name="Flow Reference" doc:id="4e9803e7-a6ae-4ebf-97fa-70ba9dd897ae" name="gbit-atm-transaction-Achyuth-raiseAccountInactiveError" />
+						<logger level="INFO" doc:name="Logger" doc:id="067e2f45-ae9b-4b54-a91e-705c086a387f" message="Account is Inactive. Raising relative error" />
+					</when>
+					<otherwise >
+						<flow-ref doc:name="Flow Reference" doc:id="4002897e-1be6-49d6-8a48-4df6a9355954" name="gbit-atm-transaction-Achyuth-isAccountPinValid" target="pinValid" />
+						<flow-ref doc:name="Flow Reference" doc:id="0a91c414-d8cf-4761-937b-2eca1ac80aee" name="gbit-atm-transaction-Achyuth-getAccountDetails" target="actualDetails"/>
+						<choice doc:name="Choice" doc:id="08d3daab-b27f-438c-ba13-9010e8392d2e" >
+							<when expression="#[vars.pinValid == 1]">
+								<ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  status: "Your total balance is <ACCOUNT> as of 20-May-2020 is <BALANCE>"
+  status: "Your total balance is " ++ vars.actualDetails.custAccNum ++ " as of " ++ vars.actualDetails.transactionTimeStamp ++ " is " ++ vars.actualDetails.totalBalance
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
+								<logger level="INFO" doc:name="Logger" doc:id="b21201a0-df93-4322-ac13-285bf1235c5c" message="#[payload]"/>
+							</when>
+							<otherwise >
+								<flow-ref doc:name="Flow Reference" doc:id="8ef39afd-19f5-47da-a2a3-ed60e7ea3879" name="gbit-atm-transaction-Achyuth-updateWrongPinCount"/>
+							</otherwise>
+						</choice>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="Account Not Exists Error" doc:id="82a4f2bb-94ad-4956-b621-a3e00150b31e" name="gbit-atm-transaction-Achyuth-raiseAccountNotExistsError"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="e0335165-bd7f-4217-94b6-1c88a0c2e7f2" type="ACCOUNT:NOTEXISTS">
+				<set-variable value="400" doc:name="Set Variable" doc:id="df802366-377c-4812-8aa2-43b221a21102" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
     </flow>
     <flow name="post:\createAccount:application\json:gbit-atm-transaction-Achyuth-config">
         <set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: attributes.queryParams.customerName default &quot;&quot;,&#10;	custAccNum: payload.accountNum default &quot;&quot;,&#10;	atmPin: payload.atmPin default &quot;&quot;,&#10;	bankName: attributes.queryParams.bank default &quot;&quot;,&#10;	accountType: attributes.queryParams.&quot;type&quot; default &quot;&quot;,&#10;	ifscCode: payload.ifscCode default &quot;&quot;,&#10;	branchName: attributes.queryParams.branchName default &quot;&quot;,&#10;	totalBalance: payload.depositAmount default &quot;0.00&quot;,&#10;	transactionTimeStamp: now() default &quot;&quot;,&#10;	accountStatus: 'Active' default &quot;&quot;,&#10;	wrongPin: 0 default -1,&#10;	mailId: payload.mailId default &quot;&quot;,&#10;	phoneNumber: payload.contact default &quot;&quot;&#10;}]" doc:name="Copy Payload" doc:id="bdbe4c5b-e701-474a-84c2-839e0111c89a" variableName="initalPayload"/>
@@ -166,14 +199,14 @@ output application/json
 vars.initalPayload]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
-		<flow-ref doc:name="Flow Reference" doc:id="48a27a04-f6a3-4ed2-b0ff-437207244228" name="gbit-atm-transaction-Achyuth-checkAccountExists" target="accountExists"/>
+		<flow-ref doc:name="Flow Reference" doc:id="48a27a04-f6a3-4ed2-b0ff-437207244228" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
 		<choice doc:name="Choice" doc:id="8dd4d786-552f-48d6-9b81-7154b2675017" >
 			<when expression="#[vars.accountExists == 0]">
 				<logger level="INFO" doc:name="Logger" doc:id="f4e215a0-2e26-471f-a58e-6c32b0860bcf" message="#[vars.initalPayload]"/>
 				<flow-ref doc:name="Flow Reference" doc:id="3a45017f-67f3-4a52-a5af-7af2f0d9ba29" name="gbit-atm-transaction-Achyuth-insertNewAccountRecord"/>
 			</when>
 			<otherwise >
-				<flow-ref doc:name="Raise Account Already Exists Error" doc:id="c099d3a9-618a-4f3d-b68f-686466c4a43d" name="gbit-atm-transaction-Achyuth-raiseAccountExists"/>
+				<flow-ref doc:name="Raise Account Already Exists Error" doc:id="c099d3a9-618a-4f3d-b68f-686466c4a43d" name="gbit-atm-transaction-Achyuth-raiseAccountExistsError"/>
 			</otherwise>
 		</choice>
 		<ee:transform doc:name="Transform Message">
@@ -193,7 +226,35 @@ output application/json
 		</error-handler>
     </flow>
     <flow name="post:\withdraw:application\json:gbit-atm-transaction-Achyuth-config">
-        <ee:transform doc:name="Transform Message">
+        <set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	custName: "NONE",&#10;	custAccNum: payload.accountNum default "NONE",&#10;	atmPin: payload.atmPin default "NON",&#10;	bankName: attributes.queryParams.bank default "",&#10;	accountType: attributes.queryParams."type" default "",&#10;	ifscCode: "NONE",&#10;	branchName: "NONE",&#10;	totalBalance: "NONE",&#10;	transactionTimeStamp: now(),&#10;	accountStatus: "",&#10;	wrongPin: -1,&#10;	mailId: "NONE",&#10;	phoneNumber: "NONE"&#10;}]' doc:name="Set Variable" doc:id="0628ede6-7290-479a-8b52-5d00ce025366" variableName="initialPayload"/>
+		<flow-ref doc:name="Flow Reference" doc:id="adaaab27-022b-48e1-a7a5-6bd110763826" name="gbit-atm-transaction-Achyuth-isAccountExists" target="accountExists"/>
+		<choice doc:name="Choice" doc:id="26596e92-268e-4767-af0d-3931d38a8b16" >
+			<when expression="#[vars.accountExists == 1]">
+				<flow-ref doc:name="Check Account is Active" doc:id="679610bb-cf95-42f0-8454-45be55c047ef" name="gbit-atm-transaction-Achyuth-isAccountActive"/>
+				<choice doc:name="Choice" doc:id="2e27b357-e33f-4fe0-ae40-8e85f414bfc0" >
+					<when expression="#[vars.accountActive != 'Active']">
+						<flow-ref doc:name="Flow Reference" doc:id="8abbcdd2-a18d-4d9f-877c-40958842cfda" name="gbit-atm-transaction-Achyuth-raiseAccountInactiveError"/>
+						<logger level="INFO" doc:name="Logger" doc:id="98638b56-57e9-4e85-b972-ac4b1976ba31" message="Account is Inactive. Raising relative error"/>
+					</when>
+					<otherwise >
+						<flow-ref doc:name="Flow Reference" doc:id="829db30f-9068-4073-81a6-1d2ae2caee53" name="gbit-atm-transaction-Achyuth-isAccountPinValid"/>
+						<flow-ref doc:name="Flow Reference" doc:id="bbae83dc-4eb7-464d-a716-d75ed4af0394" name="gbit-atm-transaction-Achyuth-getAccountDetails" target="actualDetails"/>
+						<choice doc:name="Choice" doc:id="6fc4386f-9dfc-414d-83b8-932948a646bd" >
+							<when expression="#[vars.pinValid == 1]">
+								<flow-ref doc:name="Flow Reference" doc:id="6a039c1f-bf15-4d99-8bce-500a7ca63e0d" name="gbit-atm-transaction-Achyuth-updateAccountBalance"/>
+							</when>
+							<otherwise >
+								<flow-ref doc:name="Flow Reference" doc:id="8ca94d80-4695-4e2b-a98d-147026ea9fbe" name="gbit-atm-transaction-Achyuth-updateWrongPinCount"/>
+							</otherwise>
+						</choice>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="Account Not Exists Error" doc:id="f37b0fa5-a137-4156-84b2-9be210087ea2" name="gbit-atm-transaction-Achyuth-raiseAccountNotExistsError" target="accountActive"/>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
